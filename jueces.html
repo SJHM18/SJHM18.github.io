@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Panel de Control - IPF Pro Plus</title>
+<style>
+body{background:#111;color:white;font-family:Arial;text-align:center;}
+button{padding:12px 20px;margin:6px;font-size:1rem;border:none;border-radius:6px;cursor:pointer;}
+.valid{background:#0080ff;color:white;}
+.invalid{background:crimson;color:white;}
+.next{background:orange;color:white;}
+input{padding:6px;margin:4px;width:200px;}
+</style>
+</head>
+<body>
+<h1>🎮 Panel de Control</h1>
+
+<h2>Actualizar atleta</h2>
+<input id="nameInput" placeholder="Nombre del atleta">
+<input id="weightInput" placeholder="Peso">
+<input id="attemptInput" placeholder="Intento">
+<input id="categoryInput" placeholder="Categoría">
+<button onclick="updateAthlete()">Actualizar</button>
+<button onclick="startTimer()">⏱️ Iniciar Temporizador</button>
+<button class="next" onclick="nextAthlete()">➡️ Siguiente Atleta</button>
+
+<h3>Luces de jueces</h3>
+<div>
+  <button class="valid" onclick="sendLight(1,'white')">J1 ⚪</button>
+  <button class="invalid" onclick="sendLight(1,'red')">J1 🔴</button>
+  <button class="valid" onclick="sendLight(2,'white')">J2 ⚪</button>
+  <button class="invalid" onclick="sendLight(2,'red')">J2 🔴</button>
+  <button class="valid" onclick="sendLight(3,'white')">J3 ⚪</button>
+  <button class="invalid" onclick="sendLight(3,'red')">J3 🔴</button>
+</div>
+
+<script>
+const bc = new BroadcastChannel("powerlifting_channel");
+
+function sendLight(judge, color) {
+    bc.postMessage({type: 'light', judge: judge, color: color});
+}
+
+function updateAthlete() {
+    const name = document.getElementById('nameInput').value;
+    const weight = document.getElementById('weightInput').value;
+    const attempt = document.getElementById('attemptInput').value;
+    const category = document.getElementById('categoryInput').value;
+    
+    bc.postMessage({
+        type: 'athlete',
+        name: name,
+        info: `${weight}kg | ${attempt}° intento | ${category}`
+    });
+}
+
+function startTimer() {
+    bc.postMessage({type: 'timer'});
+}
+
+function nextAthlete() {
+    bc.postMessage({type: 'next'});
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Pantalla Principal - IPF Pro Plus</title>
+<style>
+  body { margin:0; background:#000; color:white; font-family:'Segoe UI',Arial; text-align:center; overflow:hidden;}
+  header{padding:10px 0; background:#202020; color:#0cf; font-size:1.5rem; font-weight:600;}
+  h1{font-size:3rem; margin:10px 0; color:#0cf;}
+  h2{font-size:1.6rem; color:#ccc;}
+  #timer{font-size:4rem; color:#ffcc00; margin:20px 0; font-weight:bold; text-shadow:0 0 20px #ff0;}
+  .lights{display:flex; justify-content:center; gap:50px; margin:30px 0;}
+  .light{width:120px; height:120px; border-radius:50%; background:#222; box-shadow:0 0 15px #000 inset; transition:0.3s;}
+  .white{background:white; box-shadow:0 0 40px #fff;}
+  .red{background:red; box-shadow:0 0 40px red;}
+  #result{font-size:2.5rem; margin-top:20px; color:lime; text-shadow:0 0 10px lime;}
+</style>
+</head>
+<body>
+
+<header>🏆 Campeonato Municipal de Powerlifting - Quillacollo</header>
+
+<h1 id="name">🏋️ Atleta</h1>
+<h2 id="info">Peso: --- | Intento: --- | Categoría: ---</h2>
+<div id="timer">01:00</div>
+
+<div class="lights">
+  <div class="light" id="judge1"></div>
+  <div class="light" id="judge2"></div>
+  <div class="light" id="judge3"></div>
+</div>
+
+<div id="result">Esperando decisión...</div>
+
+<script>
+// Lista de atletas inicial
+let athletes = [
+    {name: 'Paolo Saavedra', info: '200kg | 1° intento | 83kg'},
+    {name: 'Ana García', info: '180kg | 1° intento | 63kg'},
+    {name: 'Carlos López', info: '220kg | 1° intento | 93kg'}
+];
+
+let current = 0;
+let time = 60;
+let timerInterval;
+
+// BroadcastChannel
+const bc = new BroadcastChannel("powerlifting_channel");
+
+// Inicializa pantalla
+function loadAthlete(index) {
+    const athlete = athletes[index];
+    document.getElementById("name").textContent = "🏋️ " + athlete.name;
+    document.getElementById("info").textContent = athlete.info;
+    resetLights();
+    resetTimer();
+}
+
+// Cargar atleta actual al inicio
+loadAthlete(current);
+
+// Luces
+function setLight(judge, color) {
+    const judgeElement = document.getElementById("judge" + judge);
+    judgeElement.className = 'light ' + color;
+    checkResult();
+}
+
+function checkResult() {
+    const lights = [1, 2, 3].map(i => 
+        document.getElementById("judge" + i).classList.contains('white')
+    );
+    const whites = lights.filter(l => l).length;
+    const resultElement = document.getElementById('result');
+    
+    if (whites >= 2) {
+        resultElement.textContent = "✅ Levantamiento VÁLIDO";
+        resultElement.style.color = "lime";
+    } else if (lights.every(l => !l)) {
+        resultElement.textContent = "Esperando decisión...";
+        resultElement.style.color = "white";
+    } else {
+        resultElement.textContent = "❌ Levantamiento NULO";
+        resultElement.style.color = "red";
+    }
+}
+
+// Temporizador
+function updateTimerDisplay() {
+    const minutes = Math.floor(time / 60);
+    const seconds = time % 60;
+    document.getElementById("timer").textContent = 
+        `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+}
+
+function startTimer() {
+    clearInterval(timerInterval);
+    time = 60;
+    updateTimerDisplay();
+    timerInterval = setInterval(() => {
+        if (time > 0) {
+            time--;
+            updateTimerDisplay();
+        } else {
+            clearInterval(timerInterval);
+            document.getElementById("timer").textContent = "⏰ TIEMPO!";
+            document.getElementById("timer").style.color = "red";
+        }
+    }, 1000);
+}
+
+function resetTimer() {
+    clearInterval(timerInterval);
+    time = 60;
+    document.getElementById("timer").style.color = "#ffcc00";
+    updateTimerDisplay();
+}
+
+// Reset luces
+function resetLights() {
+    ["judge1", "judge2", "judge3"].forEach(id => {
+        document.getElementById(id).className = 'light';
+    });
+    document.getElementById("result").textContent = "Esperando decisión...";
+    document.getElementById("result").style.color = "white";
+}
+
+// Avanzar al siguiente atleta
+function nextAthlete() {
+    current = (current + 1) % athletes.length;
+    loadAthlete(current);
+}
+
+// Recibe mensajes de panel de control
+bc.onmessage = e => {
+    const data = e.data;
+    console.log("Mensaje recibido:", data);
+    
+    if (data.type === 'light') setLight(data.judge, data.color);
+    if (data.type === 'athlete') {
+        athletes[current] = {name: data.name, info: data.info};
+        loadAthlete(current);
+    }
+    if (data.type === 'timer') startTimer();
+    if (data.type === 'next') nextAthlete();
+}
+</script>
+</body>
+</html>
